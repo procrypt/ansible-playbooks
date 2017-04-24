@@ -1,0 +1,96 @@
+---
+- hosts: server
+  vars:
+    - documentroot: /var/www/nginx/public
+  tasks:
+    - name: install nginx
+      apt:
+        pkg: nginx
+        state: latest
+      register: nginxinstalled   
+      notify: 
+       - Start Nginx
+
+    - name: Create Web-Root
+      when: nginxinstalled|success
+      file: 
+        dest: "{{ documentroot }}"
+        mode: 775 
+        state: directory 
+        owner: www-data 
+        group: www-data
+      notify:
+       - Reload Nginx
+
+    - name: install nvm dependencies
+      apt: 
+        pkg: "{{ item }}"
+        state: latest
+      with_items:
+        - build-essential
+        - libssl-dev
+
+    - name: download nvm
+      get_url:
+        url: https://raw.githubusercontent.com/creationix/nvm/v0.25.0/install.sh
+        dest: /tmp/install.sh
+        mode: 777
+    
+    - name: install nvm
+      command: sudo /bin/bash /tmp/install.sh 
+
+    - name: install npm
+      shell: source ~/.bashrc && \
+             nvm install stable
+
+    - name: install My-SQL client
+      apt:
+        pkg: mysql-client
+        state: latest
+
+  handlers:
+   - name: Start Nginx
+     service:
+       name: nginx
+       state: started
+       
+   - name: Reload Nginx
+     service:
+       name: nginx
+       state: restarted
+
+- hosts: python-worker
+  tasks:
+    - name: Download Anaconda
+      get_url:
+        url: https://repo.continuum.io/archive/Anaconda3-4.2.0-Linux-x86_64.sh
+        dest: /tmp/Anaconda3-4.2.0-Linux-x86_64.sh
+        mode: 777
+
+    - name: Install Anaconda
+      command: /bin/bash /tmp/Anaconda3-4.2.0-Linux-x86_64.sh -b
+
+    - name: Install Redis dependency
+      apt:
+        pkg: "{{ item }}"
+        state: latest
+      with_items:
+       - build-essential
+       - tcl
+
+    - name: Install Redis
+      apt:
+        pkg: redis-server
+        state: latest
+
+    - name: Add RabbitMQ ppa
+      command: echo "deb http://www.rabbitmq.com/debian/ testing main" >> /etc/apt/sources.list
+
+    - name: Install RabbitMQ
+      apt:
+        pkg: rabbitmq-server
+        state: latest
+
+    - name: Enable RabbitMQ Management Console
+      shell: rabbitmq-plugins enable rabbitmq_management && \
+             sudo service rabbitmq-server start
