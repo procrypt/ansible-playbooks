@@ -1,0 +1,228 @@
+---
+- hosts: debian
+  become: true
+  tasks:
+    - name: get ubuntu-virt-server, kvm-ipxe, python-vm-builder, ubuntu-vm-builder, ubuntu-keyring, libvirt-glib, libosinfo
+      get_url:
+        url: "{{ item }}"
+        dest: .
+      with_items:
+        - http://launchpadlibrarian.net/159511543/ubuntu-virt-server_1.4_all.deb
+        - http://kr.archive.ubuntu.com/ubuntu/pool/main/i/ipxe/kvm-ipxe_1.0.0+git-3.55f6c88-0ubuntu1_all.deb
+        - http://kr.archive.ubuntu.com/ubuntu/pool/universe/v/vm-builder/python-vm-builder_0.12.4+bzr494-0ubuntu1_all.deb
+        - http://kr.archive.ubuntu.com/ubuntu/pool/universe/v/vm-builder/ubuntu-vm-builder_0.12.4+bzr489-0ubuntu2_all.deb
+        - http://kr.archive.ubuntu.com/ubuntu/pool/main/u/ubuntu-keyring/ubuntu-keyring_2011.11.21_all.deb
+        - http://ftp.br.debian.org/debian/pool/main/libv/libvirt-glib/libvirt-glib-1.0-0_0.1.9-4_amd64.deb
+        - http://ftp.br.debian.org/debian/pool/main/libo/libosinfo/libosinfo-1.0-0_0.1.1-1_amd64.deb
+   
+    - name: install deb package
+      shell: "{{ item }}"
+      with_items:
+        - DEBIAN_FRONTEND=noninteractive apt-get install -y virtinst
+        - DEBIAN_FRONTEND=noninteractive apt-get install -y virt-manager
+        - DEBIAN_FRONTEND=noninteractive apt-get install -y libvirt-bin
+        - DEBIAN_FRONTEND=noninteractive apt-get install -y libvde-dev libvdeplug-dev libvte-2.90-dev libxen-dev liblzo2-dev valgrind xfslibs-dev
+        - DEBIAN_FRONTEND=noninteractive apt-get install -y libnfs-dev libiscsi-dev libsdl2-2.0-0 libsdl2-dev
+        - DEBIAN_FRONTEND=noninteractive apt-get install -y libguestfs-tools gtk+3.0
+        - apt-get install -y usbutils pciutils hwdata
+        - dpkg -i libvirt-glib-1.0-0_0.1.9-4_amd64.deb
+        - dpkg -i ubuntu-virt-server_1.4_all.deb
+        - dpkg -i kvm-ipxe_1.0.0+git-3.55f6c88-0ubuntu1_all.deb
+        - dpkg -i ubuntu-keyring_2011.11.21_all.deb
+        - apt-get install -y python-cheetah debootstrap rsync
+        - dpkg -i python-vm-builder_0.12.4+bzr494-0ubuntu1_all.deb
+        - apt-get -y build-dep qemu binfmt-support
+        - apt-get -y build-dep virt-manager
+
+
+    - name: install packages
+      apt:
+        pkg: "{{ item }}"
+        state: present
+      with_items:
+        - shtool 
+        - git 
+        - zip 
+        - unzip 
+        - software-properties-common 
+        - build-essential 
+        - gcc
+        - pkg-config
+        - libglib2.0-dev 
+        - libsdl1.2-dev 
+        - libaio-dev 
+        - libcap-dev 
+        - libattr1-dev 
+        - libpixman-1-dev 
+        - lvm2 
+        - python-vm-builder 
+        - qemu-kvm 
+        - qemu-system 
+        - bridge-utils 
+        - virt-viewer 
+        - libglib2.0-dev 
+        - libfdt-dev 
+        - libpixman-1-dev 
+        - zlib1g-dev 
+        - git-email 
+        - libaio-dev 
+        - libbluetooth-dev 
+        - libbrlapi-dev
+        - libbz2-dev 
+        - libcap-dev 
+        - libcap-ng-dev 
+        - libcurl4-gnutls-dev
+        - libgtk-3-dev 
+        - numactl 
+        - glusterfs-client 
+        - glusterfs-common 
+        - libibverbs-dev 
+        - libjpeg62-turbo-dev 
+        - libncurses5-dev 
+        - libnuma-dev 
+        - librbd-dev
+        - librdmacm-dev 
+        - libsasl2-dev 
+        - libsdl1.2-dev 
+        - libseccomp-dev 
+        - libsnappy-dev 
+        - libssh2-1-dev
+        - libvde-dev
+        - libvdeplug-dev
+        - libvte-2.90-dev
+        - libxen-dev
+        - liblzo2-dev
+        - valgrind
+        - xfslibs-dev
+        - libnfs-dev
+        - libiscsi-dev
+        - libsdl2-2.0-0
+        - libsdl2-dev
+        - numactl
+        - glusterfs-client
+        - glusterfs-common
+        - iasl
+        - libgtk-3-dev 
+        - gir1.2-gtk-vnc-2.0 
+        - gir1.2-spice-client-gtk-3.0
+        - python-ipaddr 
+        - gir1.2-vte-2.90 
+        - python-libxml2 
+        - python-requests
+        - gcc-multilib 
+        - g++-multilib
+       
+    - name: clone qemu
+      git:
+        repo: https://github.com/qemu/qemu.git
+        dest: /home/qemu
+
+    - name: patch qemu
+      shell: "{{ item }}"
+      with_items:
+        - sed -i 's/QEMU HARDDISK/SONY HARDDISK/g' /home/qemu/hw/ide/core.c
+        - sed -i 's/QEMU HARDDISK/SONY SCSIDISK/g' /home/qemu/hw/scsi/scsi-disk.c
+        - sed -i 's/QEMU DVD-ROM/SONY DVD-ROM/g' /home/qemu/hw/ide/core.c
+        - sed -i 's/QEMU DVD-ROM/SONY DVD-ROM/g' /home/qemu/hw/ide/atapi.c
+        - sed -i 's/s->vendor = g_strdup("QEMU");/s->vendor = g_strdup("SONY");/g' /home/qemu/hw/scsi/scsi-disk.c
+        - sed -i 's/QEMU CD-ROM/SONY CD-ROM/g' /home/qemu/hw/scsi/scsi-disk.c
+        - sed -i 's/padstr8(buf + 8, 8, "QEMU");/padstr8(buf + 8, 8, "SONY");/g' /home/qemu/hw/ide/atapi.c
+        - sed -i 's/QEMU MICRODRIVE/SONY MICRODRIVE/g' /home/qemu/hw/ide/core.c
+        - sed -i 's/KVMKVMKVM\\0\\0\\0/GenuineIntel/g' /home/qemu/target/i386/kvm.c
+
+    - name: compile qemu
+      shell: "{{ item }}"
+      with_items:
+        - mkdir /home/qemu/build
+        - cd /home/qemu/build && ../configure --target-list=x86_64-softmmu --prefix=/usr --sysconfdir=/etc --enable-sdl --with-sdlabi=2.0 --enable-xen --enable-kvm --enable-glusterfs --enable-numa
+        - cores=$(nproc)
+ 
+    - name: make cores
+      make: 
+        chdir: /home/qemu/build 
+        target: -j2
+ 
+    - name: make intall
+      make: 
+        chdir: /home/qemu/build 
+        target: install
+
+    - name: clone seabios
+      git:
+        repo: git://git.seabios.org/seabios.git
+        dest: /home/seabios
+
+    - name: patch seabios
+      shell: "{{ item }}"
+      with_items:
+        - sed -i 's/Bochs/Intel/g' /home/seabios/src/config.h
+        - sed -i 's/BOCHSCPU/INTELCPU/g' /home/seabios/src/config.h
+        - sed -i 's/BOCHS/INTEL/g' /home/seabios/src/config.h
+        - sed -i 's/BXPC/HPPC/g' /home/seabios/src/config.h
+
+    - name: make cores
+      make:
+        chdir: /home/seabios
+        target: -j2
+
+    - name: replacing old bios.bin to new one, with backup
+      shell: cp /usr/share/qemu/bios.bin /usr/share/qemu/bios.bin_back
+
+    - name: clone virt-manager
+      git:
+        repo: https://github.com/virt-manager/virt-manager
+        dest: /home/virt-manager
+
+    - name: python setup install virt-manager
+      shell: "{{ item }}"
+      with_items:
+        - cd /home/virt-manager && python setup.py install
+        - getent group kvm
+        - usermod -a -G kvm $USER
+        - getent group libvirt
+        - usermod -a -G libvirt $USER
+
+    - name: add the sandbox user and add them to the kvm/libvirt groups
+      shell: "{{ item }}"
+      with_items:
+        - adduser sandbox
+        - usermod -L sandbox
+        - usermod -a -G kvm sandbox
+        - usermod -a -G libvirt sandbox
+
+    - name: git clone hugetlbfs
+      git:
+        repo: https://github.com/libhugetlbfs/libhugetlbfs
+        dest: /usr/local/src/libhugetlbfs
+
+    - name: make cores
+      make:
+        chdir: /usr/local/src/libhugetlbfs/
+        target: -j2
+
+    - name: make install
+      make:
+        chdir: /usr/local/src/libhugetlbfs/
+        target: install
+        params:
+          PREFIX: /usr/local
+
+    - name: some additional work
+      shell: "{{ item }}"
+      with_items:
+        - groupadd libhuge
+        - usermod -a -G libhuge $USER
+        - mkdir -p /hugefs
+        - chgrp libhuge /hugefs
+        - chmod 777 /hugefs
+        - mount  -t hugetlbfs  hugetlbfs  /hugefs
+        - gid=$(getent group libhuge | cut -d ':' -f 3)
+        - echo "hugetlbfs     /hugefs   hugetlbfs  mode=0777,gid=${gid}       0  0" >> /etc/fstab
+        - echo "# Allocate 516*2MiB for HugePageTables (YMMV)" >> /etc/sysctl.conf
+        - echo "vm.nr_hugepages = 516" >> /etc/sysctl.conf
+        - echo "# Members of group libhuge(${gid}) can allocate 'huge' Shared memory segment" >> /etc/sysctl.conf
+        - echo "vm.hugetlb_shm_group = ${gid}" >> /etc/sysctl.conf
+        - echo "<memoryBacking>"
+        - echo "<hugepages/>"
+        - echo "</memoryBacking>"
+        - exit 0
